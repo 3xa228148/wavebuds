@@ -1,8 +1,10 @@
-# Wave Buds
+<img src="docs/icon.png" width="96" align="right" alt="Wave Buds icon">
+
+# Wave Buds: open-source Android app for JBL Wave Buds
 
 [English](README.md) | [Русский](README.ru.md)
 
-An unofficial, lightweight replacement for the "JBL Headphones" app, made for the original **JBL Wave Buds** (2021, Bluetooth product id `0x2090`). A ~55 KB APK with no internet permission, no analytics and no account. It opens instantly and keeps your earbuds connected and configured.
+**Wave Buds** is a free, open-source alternative to the official **JBL Headphones** app for the original **JBL Wave Buds** true wireless earbuds (2021 model, Bluetooth product id `0x2090`). Change ambient sound (Ambient Aware, TalkThru), the equalizer, touch controls, VoiceAware, auto power-off and more, see the battery level, find lost earbuds, and keep them connected. A ~58 KB APK with no internet permission, no analytics and no account; it opens instantly.
 
 <img src="docs/screenshot.png" width="300" alt="Wave Buds main screen">
 
