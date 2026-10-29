@@ -1,0 +1,6 @@
+id=wavebuds
+name=Wave Buds
+version=1.0
+versionCode=5
+author=3xa228148
+description=JBL Wave Buds control app as a priv-app (BLUETOOTH_PRIVILEGED): auto-reconnect, auto re-pair, restores earbud settings.

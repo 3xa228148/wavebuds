@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="status_offline">Наушники не на связи</string>
+    <string name="status_audio_only">Звук подключён, ищу управление…</string>
+    <string name="status_control_only">Управление есть, звук нет</string>
+    <string name="status_connected">Подключены</string>
+    <string name="battery_l">Л %1$d%%</string>
+    <string name="battery_r">П %1$d%%</string>
+    <string name="serial">Серийный номер %1$s</string>
+    <string name="notif_channel">Состояние наушников</string>
+    <string name="notif_waiting">Ожидание наушников</string>
+    <string name="notif_battery">Л %1$d%% · П %2$d%%</string>
+    <string name="perm_needed">Wave Buds нужно разрешение «Устройства поблизости», чтобы находить наушники и управлять ими, и разрешение на уведомления, чтобы показывать их заряд.</string>
+    <string name="perm_grant">Разрешить</string>
+
+    <string name="opt_off">Выкл</string>
+    <string name="opt_on">Вкл</string>
+
+    <string name="sec_ambient">Окружающий звук</string>
+    <string name="desc_ambient">Ambient Aware пропускает звуки вокруг. TalkThru приглушает музыку и выводит голоса вперёд, чтобы быстро перекинуться парой слов.</string>
+    <string name="opt_aa">Ambient Aware</string>
+    <string name="opt_tt">TalkThru</string>
+
+    <string name="sec_va">VoiceAware</string>
+    <string name="desc_va">Насколько громко вы слышите свой голос в наушниках во время звонка.</string>
+    <string name="opt_low">Низк.</string>
+    <string name="opt_mid">Средн.</string>
+    <string name="opt_high">Высок.</string>
+
+    <string name="sec_sav">Умное аудио и видео</string>
+    <string name="desc_sav">Аудио: лучшее качество звука. Видео: меньше задержка для видео и игр. Выкл: обычный режим. При переключении наушники перезапускаются, связь возвращается сама примерно через 15 секунд.</string>
+    <string name="opt_audio">Аудио</string>
+    <string name="opt_video">Видео</string>
+
+    <string name="sec_eq">Эквалайзер</string>
+    <string name="desc_eq">«Выкл» оставляет фирменный звук наушников. Выберите пресет или нарисуйте свою кривую, изменения применяются сразу.</string>
+    <string name="eq_custom">Свой</string>
+    <string name="eq_flatten">Сбросить</string>
+    <string name="eq_db">%1$+.1f дБ</string>
+
+    <string name="sec_gestures">Жесты</string>
+    <string name="desc_gestures">Что делает касание наушника. Управление звонками работает всегда: двойное касание принимает или завершает вызов, касание с удержанием отклоняет вызов или выключает микрофон.</string>
+    <string name="gest_left">Левый наушник</string>
+    <string name="gest_right">Правый наушник</string>
+    <string name="ges_none">Ничего</string>
+    <string name="ges_ambient">Окружающий звук</string>
+    <string name="ges_volume">Громкость</string>
+    <string name="ges_playback">Воспроизведение</string>
+    <string name="ges_desc_none">Касания ничего не делают (звонки управляются как обычно).</string>
+    <string name="ges_desc_ambient">Касание: режим окружения · двойное: TalkThru · удержание: голосовой ассистент</string>
+    <string name="ges_desc_volume">Касание: громче · двойное: тише · удержание: голосовой ассистент</string>
+    <string name="ges_desc_playback">Касание: пауза/play · двойное: следующий трек · тройное: предыдущий · удержание: голосовой ассистент</string>
+
+    <string name="sec_other">Прочее</string>
+    <string name="prompts">Голосовые подсказки</string>
+    <string name="desc_prompts">Короткие фразы от наушников (включение, сопряжение, смена режима).</string>
+    <string name="limiter">Ограничитель громкости</string>
+    <string name="desc_limiter">Не даёт выкрутить громкость слишком сильно, бережёт слух.</string>
+
+    <string name="sec_autooff">Автовыключение</string>
+    <string name="desc_autooff">Наушники выключатся сами, если ими не пользуются столько времени.</string>
+    <string name="opt_30m">30 мин</string>
+    <string name="opt_1h">1 ч</string>
+    <string name="opt_2h">2 ч</string>
+
+    <string name="sec_find">Найти наушники</string>
+    <string name="desc_find">Выбранный наушник громко пищит. Сначала выньте наушники из ушей!</string>
+    <string name="find_left">Левый</string>
+    <string name="find_right">Правый</string>
+    <string name="find_stop">Стоп</string>
+
+    <string name="sec_connection">Связь</string>
+    <string name="auto_repair">Автовосстановление сопряжения</string>
+    <string name="desc_auto_repair">Если телефон и наушники «забыли» друг друга, приложение снова сопряжёт их, как только наушники окажутся в режиме сопряжения. Выключите, если хотите отвязать наушники намеренно.</string>
+    <string name="reconnect">Переподключить</string>
+    <string name="log_show">Показать журнал</string>
+    <string name="log_hide">Скрыть журнал</string>
+
+    <string name="log_started">сервис запущен</string>
+    <string name="log_seen">вижу наушники по BLE (%1$s, %2$d дБм)</string>
+    <string name="log_connect_audio">подключаю звук (%1$s)</string>
+    <string name="log_connect_na">не могу принудительно подключить звук (приложение не системное)</string>
+    <string name="log_no_bond">нет сопряжения с %1$s, сопрягаю</string>
+    <string name="log_bond">сопряжение %1$s: %2$s → %3$s (причина %4$d)</string>
+    <string name="bond_yes">есть</string>
+    <string name="bond_progress">идёт</string>
+    <string name="bond_no">нет</string>
+    <string name="log_audio_on">звук подключён</string>
+    <string name="log_audio_off">звук отключён</string>
+    <string name="log_acl_lost">связь с %1$s разорвана</string>
+    <string name="log_pair_ok">запрос сопряжения %1$s подтверждён автоматически</string>
+    <string name="log_pair_manual">запрос сопряжения %1$s: подтвердите на экране</string>
+    <string name="log_ctrl_on">управление подключено</string>
+    <string name="log_ctrl_off">управление отключено (статус %1$d)</string>
+    <string name="log_no_service">сервис управления не найден</string>
+    <string name="log_addr">адрес наушников %1$s</string>
+    <string name="log_setting">настройка %1$s = %2$s</string>
+    <string name="log_profile_saved">профиль сохранён с наушников</string>
+    <string name="log_profile_same">настройки совпадают с профилем</string>
+    <string name="log_profile_restored">восстановлено настроек: %1$d</string>
+    <string name="log_write_err">ошибка записи %1$d</string>
+    <string name="why_start">запуск</string>
+    <string name="why_nearby">наушники рядом</string>
+    <string name="why_manual">вручную</string>
+    <string name="why_bonded">сопряжены</string>
+    <string name="why_pairing_mode">режим сопряжения</string>
+    <string name="why_bond_lost">сопряжение пропало</string>
+    <string name="why_retry">повтор</string>
+    <string name="why_ble">BLE на связи</string>
+</resources>

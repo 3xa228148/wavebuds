@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wave Buds</string>
+
+    <!-- status -->
+    <string name="status_offline">Earbuds not connected</string>
+    <string name="status_audio_only">Audio connected, looking for controls…</string>
+    <string name="status_control_only">Controls connected, audio not</string>
+    <string name="status_connected">Connected</string>
+    <string name="battery_l">L %1$d%%</string>
+    <string name="battery_r">R %1$d%%</string>
+    <string name="serial">Serial %1$s</string>
+    <string name="notif_channel">Earbuds status</string>
+    <string name="notif_waiting">Waiting for the earbuds</string>
+    <string name="notif_battery">L %1$d%% · R %2$d%%</string>
+    <string name="perm_needed">Wave Buds needs the Bluetooth \"Nearby devices\" permission to find and control the earbuds, and the notification permission to show their battery.</string>
+    <string name="perm_grant">Allow</string>
+
+    <!-- shared options -->
+    <string name="opt_off">Off</string>
+    <string name="opt_on">On</string>
+
+    <string name="sec_ambient">Ambient sound</string>
+    <string name="desc_ambient">Ambient Aware lets outside sounds in. TalkThru lowers the music and brings voices forward for a quick chat.</string>
+    <string name="opt_aa">Ambient Aware</string>
+    <string name="opt_tt">TalkThru</string>
+
+    <string name="sec_va">VoiceAware</string>
+    <string name="desc_va">How much of your own voice you hear in the earbuds during calls.</string>
+    <string name="opt_low">Low</string>
+    <string name="opt_mid">Medium</string>
+    <string name="opt_high">High</string>
+
+    <string name="sec_sav">Smart Audio &amp; Video</string>
+    <string name="desc_sav">Audio: best sound quality. Video: lower delay for videos and games. Off: standard mode. Switching restarts the earbuds; the connection comes back by itself in about 15 seconds.</string>
+    <string name="opt_audio">Audio</string>
+    <string name="opt_video">Video</string>
+
+    <string name="sec_eq">Equalizer</string>
+    <string name="desc_eq">Off keeps the earbuds\' own sound. Pick a preset or shape your own curve; changes apply at once.</string>
+    <string name="eq_custom">Custom</string>
+    <string name="eq_flatten">Flatten</string>
+    <string name="eq_db">%1$+.1f dB</string>
+
+    <string name="sec_gestures">Touch controls</string>
+    <string name="desc_gestures">What touching each earbud does. Call controls always work: double tap answers or ends a call, touch and hold rejects a call or mutes the microphone.</string>
+    <string name="gest_left">Left earbud</string>
+    <string name="gest_right">Right earbud</string>
+    <string name="ges_none">Nothing</string>
+    <string name="ges_ambient">Ambient sound</string>
+    <string name="ges_volume">Volume</string>
+    <string name="ges_playback">Playback</string>
+    <string name="ges_desc_none">Touches do nothing (call controls still work).</string>
+    <string name="ges_desc_ambient">Tap: ambient mode · double tap: TalkThru · hold: voice assistant</string>
+    <string name="ges_desc_volume">Tap: volume up · double tap: volume down · hold: voice assistant</string>
+    <string name="ges_desc_playback">Tap: play/pause · double tap: next · triple tap: previous · hold: voice assistant</string>
+
+    <string name="sec_other">Other</string>
+    <string name="prompts">Voice prompts</string>
+    <string name="desc_prompts">Short spoken messages from the earbuds (power, pairing, mode changes).</string>
+    <string name="limiter">Volume limiter</string>
+    <string name="desc_limiter">Caps the maximum volume to protect your hearing.</string>
+
+    <string name="sec_autooff">Auto power-off</string>
+    <string name="desc_autooff">Turns the earbuds off after they have been idle for this long.</string>
+    <string name="opt_30m">30 min</string>
+    <string name="opt_1h">1 h</string>
+    <string name="opt_2h">2 h</string>
+
+    <string name="sec_find">Find my earbuds</string>
+    <string name="desc_find">Plays a loud beep from the chosen earbud. Take the earbuds out of your ears first!</string>
+    <string name="find_left">Left</string>
+    <string name="find_right">Right</string>
+    <string name="find_stop">Stop</string>
+
+    <string name="sec_connection">Connection</string>
+    <string name="auto_repair">Auto-restore pairing</string>
+    <string name="desc_auto_repair">If the phone and the earbuds forget each other, the app pairs them again as soon as the earbuds are in pairing mode. Turn this off if you want to unpair the earbuds on purpose.</string>
+    <string name="reconnect">Reconnect</string>
+    <string name="log_show">Show event log</string>
+    <string name="log_hide">Hide event log</string>
+
+    <!-- event log -->
+    <string name="log_started">service started</string>
+    <string name="log_seen">earbuds seen over BLE (%1$s, %2$d dBm)</string>
+    <string name="log_connect_audio">connecting audio (%1$s)</string>
+    <string name="log_connect_na">cannot force an audio connection (not a system app)</string>
+    <string name="log_no_bond">not paired with %1$s, pairing</string>
+    <string name="log_bond">pairing %1$s: %2$s → %3$s (reason %4$d)</string>
+    <string name="bond_yes">paired</string>
+    <string name="bond_progress">pairing</string>
+    <string name="bond_no">not paired</string>
+    <string name="log_audio_on">audio connected</string>
+    <string name="log_audio_off">audio disconnected</string>
+    <string name="log_acl_lost">link to %1$s dropped</string>
+    <string name="log_pair_ok">pairing request %1$s confirmed automatically</string>
+    <string name="log_pair_manual">pairing request %1$s: confirm it on screen</string>
+    <string name="log_ctrl_on">controls connected</string>
+    <string name="log_ctrl_off">controls disconnected (status %1$d)</string>
+    <string name="log_no_service">control service not found</string>
+    <string name="log_addr">earbuds address %1$s</string>
+    <string name="log_setting">setting %1$s = %2$s</string>
+    <string name="log_profile_saved">profile saved from the earbuds</string>
+    <string name="log_profile_same">settings match the profile</string>
+    <string name="log_profile_restored">settings restored: %1$d</string>
+    <string name="log_write_err">write error %1$d</string>
+    <string name="why_start">start</string>
+    <string name="why_nearby">earbuds nearby</string>
+    <string name="why_manual">manual</string>
+    <string name="why_bonded">paired</string>
+    <string name="why_pairing_mode">pairing mode</string>
+    <string name="why_bond_lost">pairing lost</string>
+    <string name="why_retry">retry</string>
+    <string name="why_ble">BLE link</string>
+</resources>
