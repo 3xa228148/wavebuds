@@ -497,8 +497,9 @@ public class BudsService extends Service {
                 break;
             }
             case Proto.BATTERY:
-                state.battL = f.u8(3);
-                state.battR = f.u8(4);
+                // 0xff = that bud is not connected (in the case or out of range)
+                state.battL = f.u8(3) <= 100 ? f.u8(3) : -1;
+                state.battR = f.u8(4) <= 100 ? f.u8(4) : -1;
                 updateNotification();
                 break;
             case Proto.AMBIENT:
@@ -635,7 +636,9 @@ public class BudsService extends Service {
 
     private Notification notification() {
         PendingIntent pi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE);
-        String text = state.battL >= 0 ? getString(R.string.notif_battery, state.battL, state.battR) : getString(R.string.notif_waiting);
+        String text = state.battL >= 0 || state.battR >= 0
+                ? battery(R.string.battery_l, state.battL) + " · " + battery(R.string.battery_r, state.battR)
+                : getString(R.string.notif_waiting);
         return new Notification.Builder(this, CH)
                 .setSmallIcon(android.R.drawable.stat_sys_headset)
                 .setContentTitle(state.name != null ? "JBL Wave Buds" : getString(R.string.app_name))
@@ -643,6 +646,11 @@ public class BudsService extends Service {
                 .setContentIntent(pi)
                 .setOngoing(true)
                 .build();
+    }
+
+    /** "L 80%", or "L —" when that bud is not connected. */
+    String battery(int res, int pct) {
+        return pct >= 0 ? getString(res, pct) : getString(res, 0).replaceAll("\\d+%", "—");
     }
 
     private void updateNotification() {

@@ -12,7 +12,6 @@
     <string name="serial">Serial %1$s</string>
     <string name="notif_channel">Earbuds status</string>
     <string name="notif_waiting">Waiting for the earbuds</string>
-    <string name="notif_battery">L %1$d%% · R %2$d%%</string>
     <string name="perm_needed">Wave Buds needs the Bluetooth \"Nearby devices\" permission to find and control the earbuds, and the notification permission to show their battery.</string>
     <string name="perm_grant">Allow</string>
 

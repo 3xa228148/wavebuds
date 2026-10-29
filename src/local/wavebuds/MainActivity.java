@@ -106,9 +106,11 @@ public class MainActivity extends Activity implements BudsService.Listener {
         int st = !s.ready ? (s.audio ? R.string.status_audio_only : R.string.status_offline)
                 : (s.audio ? R.string.status_connected : R.string.status_control_only);
         status.setText(st);
-        boolean batt = s.ready && s.battL >= 0;
-        battL.setText(batt ? getString(R.string.battery_l, s.battL) : "");
-        battR.setText(batt ? getString(R.string.battery_r, s.battR) : "");
+        boolean batt = s.ready && (s.battL >= 0 || s.battR >= 0);
+        battL.setText(batt ? svc.battery(R.string.battery_l, s.battL) : "");
+        battR.setText(batt ? svc.battery(R.string.battery_r, s.battR) : "");
+        battL.setAlpha(s.battL >= 0 ? 1f : 0.4f);
+        battR.setAlpha(s.battR >= 0 ? 1f : 0.4f);
         serial.setText(s.serial != null ? getString(R.string.serial, s.serial) : "");
         binding = true;
         for (Runnable r : binders) r.run();

@@ -9,7 +9,6 @@
     <string name="serial">Серийный номер %1$s</string>
     <string name="notif_channel">Состояние наушников</string>
     <string name="notif_waiting">Ожидание наушников</string>
-    <string name="notif_battery">Л %1$d%% · П %2$d%%</string>
     <string name="perm_needed">Wave Buds нужно разрешение «Устройства поблизости», чтобы находить наушники и управлять ими, и разрешение на уведомления, чтобы показывать их заряд.</string>
     <string name="perm_grant">Разрешить</string>
 
