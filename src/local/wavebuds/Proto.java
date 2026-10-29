@@ -1,7 +1,5 @@
 package local.wavebuds;
 
-import android.os.ParcelUuid;
-
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,11 +19,11 @@ final class Proto {
     static final UUID WRITE = UUID.fromString("65786365-6c70-6f69-6e74-2e636f6d0002");
     static final UUID CCCD = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
-    /** Harman service data in the advertisement: pid (LE16), 1 byte, 2-byte token. */
-    static final ParcelUuid HARMAN_SD = ParcelUuid.fromString("0000fddf-0000-1000-8000-00805f9b34fb");
+    /** Harman service data in the advertisement: pid (LE16), 1 byte, 2-byte host tag. */
+    static final UUID HARMAN_SD = UUID.fromString("0000fddf-0000-1000-8000-00805f9b34fb");
     static final int PID = 0x2090;
     /** Google Fast Pair: in pairing mode the service data is exactly the 3-byte model id. */
-    static final ParcelUuid FAST_PAIR = ParcelUuid.fromString("0000fe2c-0000-1000-8000-00805f9b34fb");
+    static final UUID FAST_PAIR = UUID.fromString("0000fe2c-0000-1000-8000-00805f9b34fb");
     static final byte[] FAST_PAIR_MODEL = {0x08, 0x62, (byte) 0xab};
 
     static final int ACK = 0x00;
@@ -146,7 +144,7 @@ final class Proto {
     /**
      * Headroom the firmware applies before the EQ: peak of the summed magnitude response of the
      * factory curve and the user curve (RBJ peaking biquads, 48 kHz) plus a fixed 0.41 dB. Fitted
-     * to the official app's values within 0.05 dB.
+     * to the official app's values: within 0.01 dB on custom curves, 0.06 dB on presets (tests/ProtoTest).
      */
     static float calibration(float[] gains, float[][] design) {
         boolean flat = true;
@@ -198,7 +196,7 @@ final class Proto {
         return d;
     }
 
-    private static byte[] unhex(String s) {
+    static byte[] unhex(String s) {
         byte[] b = new byte[s.length() / 2];
         for (int i = 0; i < b.length; i++) b[i] = (byte) Integer.parseInt(s.substring(2 * i, 2 * i + 2), 16);
         return b;
@@ -260,6 +258,37 @@ final class Proto {
     static byte[] find(int left, int right) { return frame(FIND, 0x00, left, right); }
 
     static byte[] token(byte[] sd) { return frame(TOKEN, sd[3] & 0xff, sd[4] & 0xff); }
+
+    /** True if the advert's service data is from Wave Buds (pid 0x2090). */
+    static boolean isBuds(byte[] sd) {
+        return sd != null && sd.length >= 5 && ((sd[0] & 0xff) | (sd[1] & 0xff) << 8) == PID;
+    }
+
+    /** Host tag the buds advertise: CRC-16/ARC of the Bluetooth name of the phone they are paired with. */
+    static int hostTag(String phoneName) {
+        int crc = 0;
+        for (byte b : phoneName.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            crc ^= b & 0xff;
+            for (int i = 0; i < 8; i++) crc = (crc & 1) != 0 ? (crc >>> 1) ^ 0xa001 : crc >>> 1;
+        }
+        return crc;
+    }
+
+    /** The host tag in the advert's service data, or -1 if it is not a Wave Buds advert. */
+    static int advertTag(byte[] sd) {
+        return isBuds(sd) ? (sd[3] & 0xff) | (sd[4] & 0xff) << 8 : -1;
+    }
+
+    /** True if these buds were last paired with a phone of this name. */
+    static boolean tagMatches(byte[] sd, String phoneName) {
+        return phoneName != null && advertTag(sd) == hostTag(phoneName);
+    }
+
+    /** Battery % from the 0x25 frame (index 3 left, 4 right); -1 when that bud is not connected (0xff). */
+    static int battery(Frame f, int i) {
+        int v = f.u8(i);
+        return v <= 100 ? v : -1;
+    }
 
     // --- decoding into State ---
 

@@ -9,7 +9,9 @@ import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +31,8 @@ public class MainActivity extends Activity implements BudsService.Listener {
     private LinearLayout root;
     private TextView status, battL, battR, serial, logView;
     private View permCard;
-    private boolean binding, logOpen;
+    private boolean binding, logOpen, asked;
+    private final Runnable attachRetry = this::attach;
     private final List<Runnable> binders = new ArrayList<>();
     private int accent, cardColor, textColor;
 
@@ -72,20 +75,26 @@ public class MainActivity extends Activity implements BudsService.Listener {
         if (ok) {
             startForegroundService(new Intent(this, BudsService.class));
             attach();
-        } else {
-            requestPermissions(BudsService.PERMISSIONS, 1);
+        } else if (!asked) {
+            askPermissions(); // once; the card's button asks again (the activity resumes after the dialog)
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
-        if (BudsService.hasPermissions(this)) onResume();
+    /** Shows the permission dialog, or the app's settings page once Android stops showing it. */
+    private void askPermissions() {
+        boolean canAsk = !asked;
+        for (String p : BudsService.PERMISSIONS) {
+            if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED && shouldShowRequestPermissionRationale(p)) canAsk = true;
+        }
+        asked = true;
+        if (canAsk) requestPermissions(BudsService.PERMISSIONS, 1);
+        else startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getPackageName(), null)));
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        root.removeCallbacks(this::attach);
+        root.removeCallbacks(attachRetry);
         if (svc != null) svc.removeListener(this);
         svc = null;
     }
@@ -94,7 +103,7 @@ public class MainActivity extends Activity implements BudsService.Listener {
     private void attach() {
         if (svc != null) return;
         svc = BudsService.instance;
-        if (svc == null) { root.postDelayed(this::attach, 100); return; }
+        if (svc == null) { root.postDelayed(attachRetry, 100); return; }
         svc.addListener(this);
         onChanged();
     }
@@ -142,7 +151,7 @@ public class MainActivity extends Activity implements BudsService.Listener {
 
     private void permissionCard() {
         LinearLayout c = card(null, getString(R.string.perm_needed));
-        c.addView(button(getString(R.string.perm_grant), v -> requestPermissions(BudsService.PERMISSIONS, 1)));
+        c.addView(button(getString(R.string.perm_grant), v -> askPermissions()));
         permCard = c;
     }
 

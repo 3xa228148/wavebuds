@@ -203,11 +203,11 @@ Presets (gains 32 Hz → 16 kHz, then pre-gain; all in dB):
 
 "Off" is category `00` with every gain, the pre-gain and the calibration at 0. A custom curve uses category `e6` and pre-gain 0.
 
-**Calibration** is the headroom the firmware keeps before the EQ. The official app computes it in a native library; this value reproduces it within ±0.05 dB:
+**Calibration** is the headroom the firmware keeps before the EQ. The official app computes it in a native library; this value reproduces it within 0.01 dB for the captured custom curves and within 0.06 dB for the presets:
 
 > the maximum, over 20 Hz–20 kHz, of the summed magnitude response (dB) of the factory curve and the user curve, each band an RBJ peaking biquad at 48 kHz, plus 0.406 dB
 
-(factory-curve Q = stored byte / 8, user-curve Q = 1). For the presets the app's own values are 4.935 (JAZZ), 3.132 (VOCAL), 3.996 (BASS) and 5.201 (EXTREME BASS). See `Proto.calibration()` in the source.
+(factory-curve Q = stored byte / 8, user-curve Q = 1). For the presets the app's own values are 4.935 (JAZZ), 3.132 (VOCAL), 3.996 (BASS) and 5.201 (EXTREME BASS), so this app sends the presets exactly as captured. See `Proto.calibration()` in the source and `tests/ProtoTest.java`.
 
 ## 13. Pairing quirk
 

@@ -17,6 +17,7 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.BluetoothStatusCodes;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
@@ -31,6 +32,7 @@ import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.ParcelUuid;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -61,6 +63,11 @@ public class BudsService extends Service {
     private static final long RECONNECT_GAP_MS = 12_000;
     private static final long REPAIR_RETRY_MS = 15_000;
     private static final long REPLY_TIMEOUT_MS = 1500;
+    private static final long SETUP_TIMEOUT_MS = 6000;
+    /** A pairing request is auto-confirmed only this long after the app itself started that bond. */
+    private static final long BOND_CONFIRM_MS = 30_000;
+    private static final ParcelUuid HARMAN_SD = new ParcelUuid(Proto.HARMAN_SD);
+    private static final ParcelUuid FAST_PAIR = new ParcelUuid(Proto.FAST_PAIR);
 
     static final String[] PERMISSIONS = {
             Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.POST_NOTIFICATIONS,
@@ -81,14 +88,25 @@ public class BudsService extends Service {
     private BluetoothLeScanner scanner;
     private boolean scanning;
     private BluetoothGatt gatt;
-    private BluetoothGattCharacteristic tx;
+    private BluetoothGattCharacteristic tx, rx;
     private byte[] advertData;
     private long lastClassicAttempt;
     private long lastBondAttempt;
+    private String bondingMac;
+    private long bondStartedAt;
+
+    // Nothing is read or written until the connected buds prove to be ours (their info frame).
+    private boolean subscribed, verified;
+    /** LE addresses of buds that turned out to be someone else's (or malformed); they rotate, so in memory only. */
+    private final Set<String> rejected = new HashSet<>();
+    private String silentAddr;
+    private int silentCount;
 
     // One request on the wire at a time; the next goes after its reply (or a timeout).
     private final ArrayDeque<byte[]> queue = new ArrayDeque<>();
     private int awaiting = -1;
+    // The reply notification can arrive before Android finishes the write; a new write then fails BUSY.
+    private boolean writing;
     private boolean profileApplied;
 
     static boolean hasPermissions(Context c) {
@@ -114,7 +132,7 @@ public class BudsService extends Service {
         }
         instance = this;
         adapter = getSystemService(BluetoothManager.class).getAdapter();
-        Hidden.exemptAll();
+        if (privileged()) Hidden.exemptAll();
 
         IntentFilter f = new IntentFilter();
         f.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
@@ -232,6 +250,37 @@ public class BudsService extends Service {
         return new HashSet<>(prefs.getStringSet("macs", Collections.emptySet()));
     }
 
+    /**
+     * Whether the classic address the connected buds reported is ours: one we used before, or bonded
+     * with this phone, or (first run only) buds advertising this phone's name tag.
+     */
+    private boolean trusted(String mac) {
+        Set<String> known = knownMacs();
+        if (known.contains(mac)) return true;
+        if (adapter.getRemoteDevice(mac).getBondState() == BluetoothDevice.BOND_BONDED) return true;
+        return !prefs.contains("macs") && Proto.tagMatches(advertData, adapter.getName());
+    }
+
+    /** Advert tag of this phone's current name, or one our buds carried before (the phone was renamed). */
+    private boolean ourTag(byte[] sd) {
+        return Proto.tagMatches(sd, adapter.getName())
+                || prefs.getStringSet("tags", Collections.emptySet()).contains(String.valueOf(Proto.advertTag(sd)));
+    }
+
+    /** The user unpaired the buds on purpose (auto re-pair off): stop treating them as ours. */
+    private void forget(String mac) {
+        Set<String> macs = knownMacs();
+        macs.remove(mac);
+        SharedPreferences.Editor e = prefs.edit().putStringSet("macs", macs).remove("tags");
+        if (mac.equals(prefs.getString("mac", null))) e.remove("mac");
+        e.apply();
+        log(getString(R.string.log_forgot, mac));
+    }
+
+    private boolean privileged() {
+        return checkSelfPermission(Manifest.permission.BLUETOOTH_PRIVILEGED) == PackageManager.PERMISSION_GRANTED;
+    }
+
     private boolean classicConnected(BluetoothDevice d) {
         return a2dp != null && a2dp.getConnectionState(d) == BluetoothProfile.STATE_CONNECTED;
     }
@@ -240,7 +289,7 @@ public class BudsService extends Service {
         long now = SystemClock.elapsedRealtime();
         if (now - lastClassicAttempt < RECONNECT_GAP_MS) return;
         lastClassicAttempt = now;
-        if (checkSelfPermission(Manifest.permission.BLUETOOTH_PRIVILEGED) != PackageManager.PERMISSION_GRANTED) return;
+        if (!privileged()) return;
         log(getString(R.string.log_connect_audio, getString(why)));
         if (!Hidden.connect(d)) log(getString(R.string.log_connect_na));
     }
@@ -253,6 +302,8 @@ public class BudsService extends Service {
         if (now - lastBondAttempt < RECONNECT_GAP_MS) return;
         lastBondAttempt = now;
         log(getString(R.string.log_no_bond, mac));
+        bondingMac = mac;
+        bondStartedAt = now;
         d.createBond();
     }
 
@@ -270,13 +321,18 @@ public class BudsService extends Service {
                     if (st == BluetoothAdapter.STATE_TURNING_OFF) { stopScan(); closeGatt(); }
                     break;
                 case BluetoothDevice.ACTION_BOND_STATE_CHANGED:
-                    if (!ours) break;
                     int bs = i.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1);
+                    // Buds turned away earlier may be the ones the user has just paired.
+                    if (bs == BluetoothDevice.BOND_BONDED) { rejected.clear(); silentCount = 0; }
+                    if (!ours) break;
                     int prev = i.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1);
                     log(getString(R.string.log_bond, d.getAddress(), bond(prev), bond(bs),
                             i.getIntExtra("android.bluetooth.device.extra.REASON", -1)));
                     if (bs == BluetoothDevice.BOND_BONDED) { lastClassicAttempt = 0; kick(R.string.why_bonded); }
-                    if (bs == BluetoothDevice.BOND_NONE) h.postDelayed(() -> kick(R.string.why_bond_lost), 3000);
+                    if (bs == BluetoothDevice.BOND_NONE) {
+                        if (want(K_AUTO_REPAIR, 1) == 0) forget(d.getAddress());
+                        else h.postDelayed(() -> kick(R.string.why_bond_lost), 3000);
+                    }
                     break;
                 case BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED:
                     if (!ours) break;
@@ -296,12 +352,16 @@ public class BudsService extends Service {
         }
     };
 
-    /** Confirms pairing for the buds only, before Settings shows its dialog (priv-app only). */
+    /**
+     * Confirms a pairing request before Settings shows its dialog (priv-app only), but only for the
+     * bond this app itself has just started with the buds, and only while auto re-pair is on.
+     */
     private final BroadcastReceiver pairingReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
             BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice.class);
-            if (d == null || !knownMacs().contains(d.getAddress())) return;
+            if (d == null || want(K_AUTO_REPAIR, 1) == 0 || !d.getAddress().equals(bondingMac)
+                    || SystemClock.elapsedRealtime() - bondStartedAt > BOND_CONFIRM_MS) return;
             boolean ok;
             try {
                 ok = d.setPairingConfirmation(true);
@@ -325,8 +385,8 @@ public class BudsService extends Service {
         scanner = adapter.getBluetoothLeScanner();
         if (scanner == null) return;
         List<ScanFilter> filters = new ArrayList<>();
-        filters.add(new ScanFilter.Builder().setServiceData(Proto.HARMAN_SD, new byte[]{(byte) 0x90, 0x20}).build());
-        filters.add(new ScanFilter.Builder().setServiceData(Proto.FAST_PAIR, Proto.FAST_PAIR_MODEL).build());
+        filters.add(new ScanFilter.Builder().setServiceData(HARMAN_SD, new byte[]{(byte) 0x90, 0x20}).build());
+        filters.add(new ScanFilter.Builder().setServiceData(FAST_PAIR, Proto.FAST_PAIR_MODEL).build());
         ScanSettings s = new ScanSettings.Builder()
                 .setScanMode(state.audio ? ScanSettings.SCAN_MODE_BALANCED : ScanSettings.SCAN_MODE_LOW_POWER)
                 .build();
@@ -344,14 +404,17 @@ public class BudsService extends Service {
         @Override
         public void onScanResult(int type, ScanResult r) {
             if (r.getScanRecord() == null) return;
-            byte[] fp = r.getScanRecord().getServiceData(Proto.FAST_PAIR);
+            byte[] fp = r.getScanRecord().getServiceData(FAST_PAIR);
             if (fp != null && Arrays.equals(fp, Proto.FAST_PAIR_MODEL)) {
                 // Discoverable Fast Pair advert: the buds are in pairing mode right now.
                 kick(R.string.why_pairing_mode);
                 return;
             }
-            byte[] sd = r.getScanRecord().getServiceData(Proto.HARMAN_SD);
-            if (sd == null || sd.length < 5 || ((sd[0] & 0xff) | (sd[1] & 0xff) << 8) != Proto.PID) return;
+            byte[] sd = r.getScanRecord().getServiceData(HARMAN_SD);
+            if (!Proto.isBuds(sd) || rejected.contains(r.getDevice().getAddress())) return;
+            // Other people's Wave Buds carry the tag of their owner's phone. Ours carry this phone's name
+            // (or its old name, remembered); anything else is only tried while our buds' audio is up.
+            if (!ourTag(sd) && !knownMacs().isEmpty() && !state.audio) return;
             advertData = sd;
             if (gatt != null) return;
             stopScan();
@@ -369,8 +432,13 @@ public class BudsService extends Service {
             gatt = null;
         }
         tx = null;
+        rx = null;
+        subscribed = false;
+        verified = false;
+        h.removeCallbacks(setupTimeout);
         queue.clear();
         awaiting = -1;
+        writing = false;
         state.ready = false;
         profileApplied = false;
         h.removeCallbacks(timeout);
@@ -403,7 +471,18 @@ public class BudsService extends Service {
                     kick(R.string.why_retry);
                     return;
                 }
-                tx = s.getCharacteristic(Proto.WRITE);
+                BluetoothGattCharacteristic w = s.getCharacteristic(Proto.WRITE), n = s.getCharacteristic(Proto.NOTIFY);
+                if (w == null || n == null || n.getDescriptor(Proto.CCCD) == null) {
+                    // Has the service but not its characteristics: not Wave Buds, do not come back.
+                    log(getString(R.string.log_no_service));
+                    rejected.add(g.getDevice().getAddress());
+                    closeGatt();
+                    kick(R.string.why_retry);
+                    return;
+                }
+                tx = w;
+                rx = n;
+                h.postDelayed(setupTimeout, SETUP_TIMEOUT_MS); // MTU, subscribe and the info frame
                 g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                 g.requestMtu(512);
             });
@@ -412,8 +491,7 @@ public class BudsService extends Service {
         @Override
         public void onMtuChanged(BluetoothGatt g, int mtu, int status) {
             h.post(() -> {
-                if (g != gatt) return;
-                BluetoothGattCharacteristic rx = g.getService(Proto.SERVICE).getCharacteristic(Proto.NOTIFY);
+                if (g != gatt || rx == null) return;
                 g.setCharacteristicNotification(rx, true);
                 g.writeDescriptor(rx.getDescriptor(Proto.CCCD), BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             });
@@ -423,12 +501,15 @@ public class BudsService extends Service {
         public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor d, int status) {
             h.post(() -> {
                 if (g != gatt) return;
-                log(getString(R.string.log_ctrl_on));
-                state.ready = true;
-                queue.addAll(Proto.initReads());
-                if (advertData != null) queue.add(Proto.token(advertData));
-                pump();
-                changed();
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    log(getString(R.string.log_write_err, status));
+                    closeGatt();
+                    changed();
+                    kick(R.string.why_retry);
+                    return;
+                }
+                subscribed = true;
+                if (verified) begin();
             });
         }
 
@@ -439,8 +520,41 @@ public class BudsService extends Service {
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
-            if (status != BluetoothGatt.GATT_SUCCESS) h.post(() -> log(getString(R.string.log_write_err, status)));
+            h.post(() -> {
+                if (g != gatt) return;
+                if (status != BluetoothGatt.GATT_SUCCESS) log(getString(R.string.log_write_err, status));
+                writing = false;
+                pump();
+            });
         }
+    };
+
+    /** Subscribed and the buds are ours: read everything, then the profile is applied. */
+    private void begin() {
+        h.removeCallbacks(setupTimeout);
+        silentCount = 0;
+        log(getString(R.string.log_ctrl_on));
+        state.ready = true;
+        queue.addAll(Proto.initReads());
+        if (advertData != null) queue.add(Proto.token(advertData));
+        pump();
+        changed();
+    }
+
+    /**
+     * Subscribing and the info frame (sent on subscribe; without it we cannot tell whose buds these
+     * are) did not both happen in time. A device that keeps doing this is skipped.
+     */
+    private final Runnable setupTimeout = () -> {
+        log(getString(R.string.log_no_info));
+        String addr = gatt != null ? gatt.getDevice().getAddress() : null;
+        silentCount = addr != null && addr.equals(silentAddr) ? silentCount + 1 : 1;
+        silentAddr = addr;
+        if (addr != null && silentCount >= 3) rejected.add(addr);
+        closeGatt();
+        advertData = null;
+        changed();
+        h.postDelayed(() -> kick(R.string.why_retry), REPAIR_RETRY_MS);
     };
 
     private void send(byte[] frame) {
@@ -450,10 +564,11 @@ public class BudsService extends Service {
     }
 
     private void pump() {
-        if (awaiting >= 0 || queue.isEmpty() || gatt == null || tx == null) return;
+        if (awaiting >= 0 || writing || queue.isEmpty() || gatt == null || tx == null) return;
         byte[] f = queue.poll();
         awaiting = Proto.replyCmd(f[1] & 0xff);
         int rc = gatt.writeCharacteristic(tx, f, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        writing = rc == BluetoothStatusCodes.SUCCESS;
         Log.d(TAG, "-> " + Proto.hex(f) + " rc=" + rc);
         h.postDelayed(timeout, REPLY_TIMEOUT_MS);
     }
@@ -467,6 +582,11 @@ public class BudsService extends Service {
     private void onNotify(byte[] v) {
         Log.d(TAG, "<- " + Proto.hex(v));
         for (Proto.Frame f : Proto.parse(v)) {
+            if (f.cmd == Proto.INFO) {
+                if (!onInfo(f)) return;
+                continue;
+            }
+            if (!verified) continue;
             handle(f);
             if (f.cmd == awaiting) {
                 awaiting = -1;
@@ -481,25 +601,51 @@ public class BudsService extends Service {
         changed();
     }
 
+    /** Info frame: adopt the buds if they are ours, else drop the link. False if the link was dropped. */
+    private boolean onInfo(Proto.Frame f) {
+        String mac = Proto.infoMac(f);
+        if (mac == null) return true;
+        if (!trusted(mac)) {
+            log(getString(R.string.log_not_ours, mac));
+            if (gatt != null) {
+                if (rejected.size() > 64) rejected.clear();
+                rejected.add(gatt.getDevice().getAddress());
+            }
+            closeGatt();
+            advertData = null; // it was theirs: says nothing about our buds being around
+            changed();
+            kick(R.string.why_retry);
+            return false;
+        }
+        state.name = Proto.infoName(f);
+        state.mac = mac;
+        Set<String> macs = knownMacs();
+        if (macs.add(mac)) log(getString(R.string.log_addr, mac));
+        SharedPreferences.Editor e = prefs.edit().putString("mac", mac).putStringSet("macs", macs);
+        if (Proto.advertTag(advertData) >= 0) {
+            Set<String> tags = new HashSet<>(prefs.getStringSet("tags", Collections.emptySet()));
+            if (tags.size() > 8) tags.clear();
+            tags.add(String.valueOf(Proto.advertTag(advertData)));
+            e.putStringSet("tags", tags);
+        }
+        e.apply();
+        BluetoothDevice d = adapter.getRemoteDevice(mac);
+        if (d.getBondState() == BluetoothDevice.BOND_NONE) ensureBond(mac);
+        else if (!classicConnected(d)) connectClassic(d, R.string.why_ble);
+        if (!verified) {
+            verified = true;
+            if (subscribed) begin();
+        }
+        changed();
+        return true;
+    }
+
     private void handle(Proto.Frame f) {
         switch (f.cmd) {
-            case Proto.INFO: {
-                String mac = Proto.infoMac(f);
-                state.name = Proto.infoName(f);
-                if (mac == null) break;
-                state.mac = mac;
-                Set<String> macs = knownMacs();
-                if (macs.add(mac)) log(getString(R.string.log_addr, mac));
-                prefs.edit().putString("mac", mac).putStringSet("macs", macs).apply();
-                BluetoothDevice d = adapter.getRemoteDevice(mac);
-                if (d.getBondState() == BluetoothDevice.BOND_NONE) ensureBond(mac);
-                else if (!classicConnected(d)) connectClassic(d, R.string.why_ble);
-                break;
-            }
             case Proto.BATTERY:
                 // 0xff = that bud is not connected (in the case or out of range)
-                state.battL = f.u8(3) <= 100 ? f.u8(3) : -1;
-                state.battR = f.u8(4) <= 100 ? f.u8(4) : -1;
+                state.battL = Proto.battery(f, 3);
+                state.battR = Proto.battery(f, 4);
                 updateNotification();
                 break;
             case Proto.AMBIENT:

@@ -97,6 +97,9 @@
     <string name="log_ctrl_on">controls connected</string>
     <string name="log_ctrl_off">controls disconnected (status %1$d)</string>
     <string name="log_no_service">control service not found</string>
+    <string name="log_not_ours">earbuds %1$s are not yours (not paired with this phone), ignoring them</string>
+    <string name="log_no_info">earbuds did not finish connecting (no subscribe or no info frame), disconnected</string>
+    <string name="log_forgot">earbuds %1$s unpaired with auto re-pair off: forgotten</string>
     <string name="log_addr">earbuds address %1$s</string>
     <string name="log_setting">setting %1$s = %2$s</string>
     <string name="log_profile_saved">profile saved from the earbuds</string>

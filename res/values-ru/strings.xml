@@ -92,6 +92,9 @@
     <string name="log_ctrl_on">управление подключено</string>
     <string name="log_ctrl_off">управление отключено (статус %1$d)</string>
     <string name="log_no_service">сервис управления не найден</string>
+    <string name="log_not_ours">наушники %1$s чужие (не сопряжены с этим телефоном), не трогаю</string>
+    <string name="log_no_info">наушники не завершили подключение (нет подписки или служебного кадра), отключаюсь</string>
+    <string name="log_forgot">наушники %1$s отвязаны при выключенном автовосстановлении: забыты</string>
     <string name="log_addr">адрес наушников %1$s</string>
     <string name="log_setting">настройка %1$s = %2$s</string>
     <string name="log_profile_saved">профиль сохранён с наушников</string>
